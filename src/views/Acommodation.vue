@@ -7,14 +7,13 @@
           {{ type == 1 ? "Crear" : "Editar" }} Configuración Cuartos
         </h1>
 
-        <form class="row g-3" method="post" @submit="storeConfig">
+        <form class="row g-3" method="post" @submit="storeConfig" v-if="type == 1">
           <div class="col-md-6">
             <label for="inputRoomsType" class="form-label">Tipo Cuarto</label>
             <select
               id="inputRoomsType"
               class="form-select shadow p-3 mb-5 bg-white rounded"
-              v-model="room"
-              :value="roomArrayConf.rooms_number"
+              v-model="roomTypes"
               @change="getAcommodation"
             >
               <option selected>Seleccione el tipo de cuarto...</option>
@@ -22,6 +21,7 @@
                 v-for="roomType in roomsType"
                 :key="roomType.id"
                 :value="roomType.id"
+                :selected="roomTypes == roomType.id"
               >
                 {{ roomType.type }}
               </option>
@@ -36,7 +36,71 @@
               class="form-select shadow p-3 mb-5 bg-white rounded"
               v-model="typeAcommodation"
             >
-              <option selected>Seleccione el tipo de acomodación...</option>
+              <option>Seleccione el tipo de acomodación...</option>
+              <option
+                v-for="acommodance in acommodances"
+                :key="acommodance.id"
+                :value="acommodance.id"
+              >
+                {{ acommodance.type_acommodation }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="inputRoomConf" class="form-label"
+              >Cuarto a asignar</label
+            >
+            <input
+              type="text"
+              class="form-control shadow p-3 mb-5 bg-white rounded"
+              id="inputRoomConf"
+              v-model="numberRooms"
+            />
+          </div>
+          <div class="col-md-12 mt-5">
+            <button type="submit" class="btn btn-primary mx-3 shadow rounded">
+              {{ type == 1 ? 'Crear' : 'Editar' }}  Hotel
+            </button>
+            <router-link
+              type="submit"
+              class="btn btn-outline-primary my-5 shadow rounded"
+              :to="{ name: 'type', params: { id: hotel.id } }"
+              >Volver</router-link
+            >
+          </div>
+          <router-view />
+        </form>
+
+        <form class="row g-3" method="post" @submit="updateRooms" v-else>
+          <div class="col-md-6">
+            <label for="inputRoomsType" class="form-label">Tipo Cuarto</label>
+            <select
+              id="inputRoomsType"
+              class="form-select shadow p-3 mb-5 bg-white rounded"
+              v-model="roomTypes"
+              @change="getAcommodation"
+            >
+              <option selected>Seleccione el tipo de cuarto...</option>
+              <option
+                v-for="roomType in roomsType"
+                :key="roomType.id"
+                :value="roomType.id"
+                :selected="roomTypes == roomType.id"
+              >
+                {{ roomType.type }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label for="inputAcommodationType" class="form-label"
+              >Tipo Acomodación</label
+            >
+            <select
+              id="inputAcommodationType"
+              class="form-select shadow p-3 mb-5 bg-white rounded"
+              v-model="typeAcommodation"
+            >
+              <option>Seleccione el tipo de acomodación...</option>
               <option
                 v-for="acommodance in acommodances"
                 :key="acommodance.id"
@@ -93,7 +157,8 @@ export default {
       id: null,
       type: null,
       roomConf: null,
-      roomArrayConf: []
+      roomTypes: null,
+      changeAcommodation: null,
     };
   },
   mounted() {
@@ -104,8 +169,10 @@ export default {
       this.id = this.$route.params.id;
     }
 
+    
     this.getRooms();
     this.getRoomConfig();
+    this.getAcommodation();
   },
   methods: {
     getRooms() {
@@ -120,9 +187,24 @@ export default {
           console.log(error);
         });
     },
+    getRoomConfig() {
+      let data = new FormData();
+      data.append("id", this.id);
+
+      axios
+        .post(`${this.path}get-room-conf`, data)
+        .then((response) => {
+          this.numberRooms = response.data.rooms_number;
+          this.typeAcommodation = response.data.acommodation_type_id;
+          this.roomTypes = response.data.rooms_type_id;
+        })
+        .catch((error) => {
+          console.log(error);
+        });
+    },
     getAcommodation() {
       let data = new FormData();
-      data.append("roomId", this.room);
+      data.append("roomId", this.roomTypes);
 
       axios
         .post(`${this.path}acommodations`, data)
@@ -131,6 +213,7 @@ export default {
           response.data.acommodations.forEach((element) => {
             this.acommodances.push(element);
           });
+          
         })
         .catch((error) => {
           console.log(error);
@@ -170,21 +253,41 @@ export default {
 
       e.preventDefault();
     },
-    getRoomConfig() {
+    updateRooms(e) {
+
       let data = new FormData();
-      data.append("id", this.id);
+      data.append("roomTypes", this.roomTypes);
+      data.append("typeAcommodation", this.typeAcommodation);
+      data.append("numberRooms", this.numberRooms);
+      data.append("hotelId", this.hotel);
 
       axios
-        .post(`${this.path}get-room-conf`, data)
+        .post(`${this.path}update-configuration`, data)
         .then((response) => {
-          this.numberRooms = response.data.rooms_number;
-          this.typeAcommodation = response.data.acommodation_type_id;
           console.log(response.data);
-          console.log(response.data.rooms_number);
+          // this.$swal({
+          //   title:
+          //     response.data.status == "success"
+          //       ? "Asignacion Acomodamiento Exitoso"
+          //       : "Error en Asignación",
+          //   text: `${response.data.message}`,
+          //   icon: response.data.status == "success" ? "success" : "warning",
+          //   confirmButtonText: "Ok",
+          // });
+
+          // this.room = "";
+          // this.typeAcommodation = "";
+          // this.roomConf = "";
+
+          // if (response.data.status == "success") {
+          //   router.push({ name: "type", params: { id: this.hotel } });
+          // }
         })
         .catch((error) => {
           console.log(error);
         });
+
+      e.preventDefault();
     }
   },
 };
